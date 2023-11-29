@@ -4,6 +4,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Graph;
+using Microsoft.Graph.Models;
 
 namespace b2c_ms_graph
 {
@@ -17,12 +18,10 @@ namespace b2c_ms_graph
             this.PasswordProfile = new PasswordProfile
             {
                 ForceChangePasswordNextSignIn = false,
-                Password = this.Password,
-                ODataType = null
+                Password = this.Password
             };
             this.PasswordPolicies =  "DisablePasswordExpiration,DisableStrongPassword";
             this.Password = null;
-            this.ODataType = null;
 
             foreach (var item in this.Identities)
             {

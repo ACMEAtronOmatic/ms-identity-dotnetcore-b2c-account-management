@@ -7,6 +7,7 @@ using System.IO;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Microsoft.Graph;
+using Microsoft.Graph.Models;
 
 namespace b2c_ms_graph
 {
@@ -22,17 +23,13 @@ namespace b2c_ms_graph
             {
                 // Get all users
                 var users = await graphClient.Users
-                    .Request()
-                    .Select(e => new
+                    .GetAsync(reqConfig =>
                     {
-                        e.DisplayName,
-                        e.Id,
-                        e.Identities
-                    })
-                    .GetAsync();
+                        reqConfig.QueryParameters.Select = new [] { "displayName", "id", "identities"};
+                    });
 
                 // Iterate over all the users in the directory
-                var pageIterator = PageIterator<User>
+                var pageIterator = PageIterator<User, UserCollectionResponse>
                     .CreatePageIterator(
                         graphClient,
                         users,
@@ -70,17 +67,13 @@ namespace b2c_ms_graph
             {
                 // Get all users 
                 var users = await graphClient.Users
-                    .Request()
-                    .Select(e => new
+                    .GetAsync(reqConfig =>
                     {
-                        e.DisplayName,
-                        e.Id,
-                        e.Identities
-                    })
-                    .GetAsync();
+                        reqConfig.QueryParameters.Select = new [] { "displayName", "id", "identities"};
+                    });
 
                 // Iterate over all the users in the directory
-                var pageIterator = PageIterator<User>
+                var pageIterator = PageIterator<User, UserCollectionResponse>
                     .CreatePageIterator(
                         graphClient,
                         users,
@@ -132,11 +125,15 @@ namespace b2c_ms_graph
 
             // Get all users (one page)
             var result = await graphClient.Users
-                .Request()
-                .Select($"id,displayName,identities,{favouriteSeasonAttributeName},{lovesPetsAttributeName}")
-                .GetAsync();
+                .GetAsync(requestConfiguration =>
+                {
+                    requestConfiguration.QueryParameters.Select = new []
+                    {
+                        "id", "displayName", "identities", favouriteSeasonAttributeName, lovesPetsAttributeName
+                    };
+                });
 
-            foreach (var user in result.CurrentPage)
+            foreach (var user in result?.Value!)
             {
                 Console.WriteLine(JsonSerializer.Serialize(user));
 
@@ -156,14 +153,10 @@ namespace b2c_ms_graph
             {
                 // Get user by object ID
                 var result = await graphClient.Users[userId]
-                    .Request()
-                    .Select(e => new
+                    .GetAsync(reqConfig =>
                     {
-                        e.DisplayName,
-                        e.Id,
-                        e.Identities
-                    })
-                    .GetAsync();
+                        reqConfig.QueryParameters.Select = new [] { "displayName", "id", "identities"};
+                    });
 
                 if (result != null)
                 {
@@ -189,15 +182,19 @@ namespace b2c_ms_graph
             {
                 // Get user by sign-in name
                 var result = await graphClient.Users
-                    .Request()
-                    .Filter($"identities/any(c:c/issuerAssignedId eq '{userId}' and c/issuer eq '{config.TenantId}')")
-                    .Select(e => new
+                    // .Request()
+                    // .Filter($"identities/any(c:c/issuerAssignedId eq '{userId}' and c/issuer eq '{config.TenantId}')")
+                    // .Select(e => new
+                    // {
+                    //     e.DisplayName,
+                    //     e.Id,
+                    //     e.Identities
+                    // })
+                    .GetAsync(reqConfig =>
                     {
-                        e.DisplayName,
-                        e.Id,
-                        e.Identities
-                    })
-                    .GetAsync();
+                        reqConfig.QueryParameters.Select = new [] { "displayName", "id", "identities"};
+                        reqConfig.QueryParameters.Filter = $"identities/any(c:c/issuerAssignedId eq '{userId}' and c/issuer eq '{config.TenantId}')";
+                    });
 
                 if (result != null)
                 {
@@ -223,7 +220,6 @@ namespace b2c_ms_graph
             {
                 // Delete user by object ID
                 await graphClient.Users[userId]
-                   .Request()
                    .DeleteAsync();
 
                 Console.WriteLine($"User with object ID '{userId}' successfully deleted.");
@@ -260,8 +256,7 @@ namespace b2c_ms_graph
             {
                 // Update user by object ID
                 await graphClient.Users[userId]
-                   .Request()
-                   .UpdateAsync(user);
+                   .PatchAsync(user);
 
                 Console.WriteLine($"User with object ID '{userId}' successfully updated.");
             }
@@ -302,8 +297,7 @@ namespace b2c_ms_graph
                 {
                     // Create the user account in the directory
                     User user1 = await graphClient.Users
-                                    .Request()
-                                    .AddAsync(user);
+                                    .PostAsync(user);
 
                     Console.WriteLine($"User '{user.DisplayName}' successfully created.");
                 }
@@ -343,8 +337,7 @@ namespace b2c_ms_graph
             {
                 // Create user
                 var result = await graphClient.Users
-                .Request()
-                .AddAsync(new User
+                .PostAsync(new User
                 {
                     GivenName = "Casey",
                     Surname = "Jensen",
@@ -372,9 +365,15 @@ namespace b2c_ms_graph
 
                 // Get created user by object ID
                 result = await graphClient.Users[userId]
-                    .Request()
-                    .Select($"id,givenName,surName,displayName,identities,{favouriteSeasonAttributeName},{lovesPetsAttributeName}")
-                    .GetAsync();
+                    // .Request()
+                    // .Select($"id,givenName,surName,displayName,identities,{favouriteSeasonAttributeName},{lovesPetsAttributeName}")
+                    .GetAsync(reqConfig =>
+                    {
+                        reqConfig.QueryParameters.Select = new []
+                        {
+                            "id", "givenName", "surName", "displayName", "identities", favouriteSeasonAttributeName, lovesPetsAttributeName
+                        };
+                    });
 
                 if (result != null)
                 {
@@ -389,7 +388,7 @@ namespace b2c_ms_graph
             }
             catch (ServiceException ex)
             {
-                if (ex.StatusCode == System.Net.HttpStatusCode.BadRequest)
+                if (ex.ResponseStatusCode == (int)System.Net.HttpStatusCode.BadRequest)
                 {
                     Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine($"Have you created the custom attributes '{customAttributeName1}' (string) and '{customAttributeName2}' (boolean) in your tenant?");
